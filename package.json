@@ -1,0 +1,12 @@
+{
+  "name": "carrerai-hrflow-workspace",
+  "version": "1.0.0",
+  "description": "HR-FLOW — Premium AI-Powered Full-Stack Recruitment Platform",
+  "scripts": {
+    "dev": "cd client && npm run dev",
+    "start": "cd server && npm start",
+    "server": "cd server && npm start",
+    "client": "cd client && npm run dev",
+    "seed": "cd server && npm run seed"
+  }
+}
