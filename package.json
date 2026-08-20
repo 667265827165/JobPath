@@ -2,7 +2,11 @@
   "name": "carrerai-hrflow-workspace",
   "version": "1.0.0",
   "type": "module",
-  "description": "HR-FLOW — Premium AI-Powered Full-Stack Recruitment Platform",
+  "description": "JobPath — Premium AI-Powered Full-Stack Recruitment Platform",
+  "workspaces": [
+    "client",
+    "server"
+  ],
   "scripts": {
     "build": "npm --prefix client run build",
     "start": "node server/server.js",
@@ -12,6 +16,6 @@
     "seed": "npm --prefix server run seed"
   },
   "devDependencies": {
-    "concurrently": "^10.0.5"
+    "concurrently": "^9.1.2"
   }
 }

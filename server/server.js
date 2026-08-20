@@ -111,6 +111,18 @@ app.use('/api/maps', mapsRoutes);
 app.use('/api/learning', learningRoutes);
 app.use('/api/career', learningRoutes);
 
+// Serve static assets in production
+if (process.env.NODE_ENV === 'production') {
+  const clientDist = path.join(__dirname, '../client/dist');
+  app.use(express.static(clientDist));
+  app.get('*', (req, res, next) => {
+    if (req.originalUrl.startsWith('/api')) {
+      return next();
+    }
+    res.sendFile(path.join(clientDist, 'index.html'));
+  });
+}
+
 // Global Error Handlers
 app.use(notFound);
 app.use(errorHandler);
@@ -118,5 +130,6 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-  console.log(`🚀 HR-FLOW Server is running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+  console.log(`🚀 JobPath Server is running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
 });
+
