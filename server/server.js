@@ -30,6 +30,9 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
+// Trust proxy for Render / reverse proxies (fixes X-Forwarded-For rate-limit error)
+app.set('trust proxy', 1);
+
 // Connect to Database
 connectDB();
 
@@ -73,6 +76,7 @@ const limiter = rateLimit({
   max: 300, // limit each IP to 300 requests per windowMs
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false, default: true },
   message: { success: false, message: 'Too many requests, please try again later.' },
 });
 app.use('/api', limiter);
