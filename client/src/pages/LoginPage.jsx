@@ -19,7 +19,7 @@ import {
 
 export const LoginPage = () => {
   const navigate = useNavigate();
-  const { login, demoLogin } = useAuth();
+  const { user, isAuthenticated, login, demoLogin, socialLogin } = useAuth();
   const { showToast } = useToast();
 
   const [email, setEmail] = useState('');
@@ -28,47 +28,93 @@ export const LoginPage = () => {
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
 
+  // Redirect if already authenticated
+  React.useEffect(() => {
+    if (isAuthenticated && user) {
+      if (user.role === 'recruiter') navigate('/recruiter/dashboard', { replace: true });
+      else if (user.role === 'admin') navigate('/admin/dashboard', { replace: true });
+      else navigate('/candidate/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, user, navigate]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (loading) return;
 
-    if (!email.trim() || !password.trim()) {
-      showToast('Please enter both email and password.', 'info');
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      showToast('Please enter your email address.', 'info');
       return;
     }
 
-    setLoading(true);
-    const res = await login(email.trim().toLowerCase(), password);
-    setLoading(false);
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      showToast('Please enter a valid email address (e.g. name@domain.com).', 'info');
+      return;
+    }
 
-    if (res.success) {
-      showToast('Signed in successfully!', 'success');
-      if (res.user.role === 'recruiter') navigate('/recruiter/dashboard');
-      else if (res.user.role === 'admin') navigate('/admin/dashboard');
-      else navigate('/candidate/dashboard');
-    } else {
-      showToast(res.message || 'Login failed. Please check credentials.', 'error');
+    if (!password) {
+      showToast('Please enter your password.', 'info');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const res = await login(trimmedEmail, password);
+      if (res.success && res.user) {
+        showToast('Signed in successfully! Welcome back.', 'success');
+        if (res.user.role === 'recruiter') navigate('/recruiter/dashboard');
+        else if (res.user.role === 'admin') navigate('/admin/dashboard');
+        else navigate('/candidate/dashboard');
+      } else {
+        showToast(res.message || 'Invalid email or password.', 'error');
+      }
+    } catch {
+      showToast('Unable to complete login. Please try again.', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleDemo = async (roleType) => {
-    setLoading(true);
-    const res = await demoLogin(roleType);
-    setLoading(false);
-    if (res.success) {
-      showToast(`Logged in as ${roleType}!`, 'success');
-      if (roleType === 'recruiter') navigate('/recruiter/dashboard');
-      else if (roleType === 'admin') navigate('/admin/dashboard');
-      else navigate('/candidate/dashboard');
+    if (loading) return;
+    try {
+      setLoading(true);
+      const res = await demoLogin(roleType);
+      if (res.success && res.user) {
+        showToast(`Signed in as demo ${roleType}!`, 'success');
+        if (res.user.role === 'recruiter') navigate('/recruiter/dashboard');
+        else if (res.user.role === 'admin') navigate('/admin/dashboard');
+        else navigate('/candidate/dashboard');
+      } else {
+        showToast(res.message || 'Demo login failed.', 'error');
+      }
+    } catch {
+      showToast('Demo login unavailable.', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleSocialAuth = (provider) => {
-    showToast(`Connecting with ${provider}...`, 'info');
-    setTimeout(() => {
-      showToast(`${provider} login successful!`, 'success');
-      navigate('/candidate/dashboard');
-    }, 1200);
+  const handleSocialAuth = async (provider) => {
+    if (loading) return;
+    try {
+      setLoading(true);
+      showToast(`Connecting with ${provider}...`, 'info');
+      const res = await socialLogin(provider, 'candidate');
+      if (res.success && res.user) {
+        showToast(`${provider} sign-in successful!`, 'success');
+        if (res.user.role === 'recruiter') navigate('/recruiter/dashboard');
+        else if (res.user.role === 'admin') navigate('/admin/dashboard');
+        else navigate('/candidate/dashboard');
+      } else {
+        showToast(res.message || `${provider} authentication failed.`, 'error');
+      }
+    } catch {
+      showToast(`Failed to authenticate with ${provider}.`, 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

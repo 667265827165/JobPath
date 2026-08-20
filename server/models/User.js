@@ -55,18 +55,29 @@ const UserSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    emailVerificationOtp: String,
+    emailVerificationExpires: Date,
+    emailVerificationAttempts: {
+      type: Number,
+      default: 0,
+    },
+    resetPasswordToken: String,
+    resetPasswordExpire: Date,
   },
   { timestamps: true }
 );
 
 // Hash password before saving
-UserSchema.pre('save', async function (next) {
+UserSchema.pre('save', async function () {
   if (!this.isModified('password')) {
-    return next();
+    return;
   }
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
-  next();
 });
 
 // Compare password

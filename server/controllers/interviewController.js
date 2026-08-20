@@ -1,7 +1,10 @@
 import Interview from '../models/Interview.js';
 import Application from '../models/Application.js';
+import Job from '../models/Job.js';
 import Notification from '../models/Notification.js';
+import CandidateProfile from '../models/CandidateProfile.js';
 import { generateInterviewAssessment, evaluateInterviewSubmission } from '../services/interviewAgentService.js';
+import { calculateJobMatch } from '../services/aiRecommendationService.js';
 
 export const getInterviewAssessment = async (req, res, next) => {
   try {
@@ -42,27 +45,75 @@ export const submitInterviewAssessment = async (req, res, next) => {
 
 export const scheduleInterview = async (req, res, next) => {
   try {
-    const { applicationId, title, round, interviewType, scheduledDate, startTime, durationMinutes, meetingLink, instructions } = req.body;
+    const {
+      applicationId,
+      candidateId,
+      jobId,
+      title,
+      round,
+      interviewType,
+      scheduledDate,
+      startTime,
+      durationMinutes,
+      meetingLink,
+      instructions,
+    } = req.body;
 
-    const application = await Application.findById(applicationId).populate('jobId').populate('companyId');
-    if (!application) {
+    let targetApplication = null;
+
+    if (applicationId) {
+      targetApplication = await Application.findById(applicationId).populate('jobId').populate('companyId');
+    } else if (candidateId && jobId) {
+      targetApplication = await Application.findOne({ candidateId, jobId }).populate('jobId').populate('companyId');
+
+      if (!targetApplication) {
+        // Automatically scaffold application when recruiter initiates interview from discovery pool
+        const job = await Job.findById(jobId).populate('companyId');
+        if (!job) {
+          return res.status(404).json({ success: false, message: 'Job not found.' });
+        }
+        const profile = await CandidateProfile.findOne({ userId: candidateId });
+        const match = calculateJobMatch(profile?.skills || [], profile?.experienceYears || 3, job);
+
+        targetApplication = await Application.create({
+          jobId,
+          candidateId,
+          recruiterId: req.user._id,
+          companyId: job.companyId._id,
+          matchScore: match.score,
+          matchBreakdown: match,
+          status: 'interview',
+          timeline: [
+            {
+              status: 'interview',
+              updatedAt: new Date(),
+              note: `Direct interview invite by ${req.user.name}`,
+              updatedBy: req.user._id,
+            },
+          ],
+        });
+        targetApplication = await Application.findById(targetApplication._id).populate('jobId').populate('companyId');
+      }
+    }
+
+    if (!targetApplication) {
       return res.status(404).json({
         success: false,
-        message: 'Application not found.',
+        message: 'Could not find or create application for interview scheduling.',
       });
     }
 
     const interview = await Interview.create({
-      applicationId,
-      jobId: application.jobId._id,
-      candidateId: application.candidateId,
+      applicationId: targetApplication._id,
+      jobId: targetApplication.jobId._id,
+      candidateId: targetApplication.candidateId,
       recruiterId: req.user._id,
-      companyId: application.companyId._id,
-      title: title || `Interview for ${application.jobId.title}`,
+      companyId: targetApplication.companyId._id,
+      title: title || `Interview for ${targetApplication.jobId.title}`,
       round: round || 'Technical Round',
       interviewType: interviewType || 'online',
-      scheduledDate,
-      startTime,
+      scheduledDate: scheduledDate || 'Upcoming',
+      startTime: startTime || '16:00 IST',
       durationMinutes: durationMinutes || 45,
       meetingLink: meetingLink || 'https://meet.google.com/hrc-flow-tech',
       instructions: instructions || 'Please join 5 minutes early with working audio/video.',
@@ -70,22 +121,22 @@ export const scheduleInterview = async (req, res, next) => {
     });
 
     // Update application status to 'interview'
-    application.status = 'interview';
-    application.timeline.push({
+    targetApplication.status = 'interview';
+    targetApplication.timeline.push({
       status: 'interview',
       updatedAt: new Date(),
-      note: `Interview scheduled on ${scheduledDate} at ${startTime} (${round})`,
+      note: `Interview scheduled on ${scheduledDate || 'Upcoming'} (${round || 'Technical Round'})`,
       updatedBy: req.user._id,
     });
-    await application.save();
+    await targetApplication.save();
 
     // Create Notification for candidate
     await Notification.create({
-      recipientId: application.candidateId,
+      recipientId: targetApplication.candidateId,
       senderId: req.user._id,
       type: 'interview_scheduled',
-      title: `📅 Interview Scheduled: ${round}`,
-      message: `You have an upcoming ${round} with ${application.companyId.name} on ${scheduledDate} at ${startTime}.`,
+      title: `📅 Interview Scheduled: ${round || 'Technical Round'}`,
+      message: `You have an upcoming ${round || 'Technical Round'} with ${targetApplication.companyId.name} on ${scheduledDate || 'the scheduled date'}.`,
       link: '/candidate/interviews',
     });
 

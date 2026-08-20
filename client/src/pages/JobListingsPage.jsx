@@ -4,12 +4,13 @@ import { Navbar } from '../components/layout/Navbar';
 import { Footer } from '../components/layout/Footer';
 import { JobCard } from '../components/jobs/JobCard';
 import { JobFilters } from '../components/jobs/JobFilters';
+import { JobMapView } from '../components/jobs/JobMapView';
 import { Modal } from '../components/common/Modal';
 import { Button } from '../components/common/Button';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import api from '../api/axios';
-import { Search, SlidersHorizontal, Sparkles, AlertCircle, ArrowUpDown, CheckCircle2 } from 'lucide-react';
+import { Search, SlidersHorizontal, Sparkles, AlertCircle, ArrowUpDown, CheckCircle2, Map, LayoutGrid } from 'lucide-react';
 
 export const JobListingsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -20,6 +21,7 @@ export const JobListingsPage = () => {
   const [totalJobs, setTotalJobs] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'map'
 
   // Quick Apply Modal State
   const [applyModalOpen, setApplyModalOpen] = useState(false);
@@ -147,8 +149,34 @@ export const JobListingsPage = () => {
             </p>
           </div>
 
-          {/* Sort & Mobile filter trigger */}
+          {/* View Toggle & Sort & Mobile filter trigger */}
           <div className="flex items-center gap-3">
+            {/* View Mode Toggle: Grid vs Map */}
+            <div className="flex items-center bg-[#151820] border border-white/10 p-1 rounded-2xl">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  viewMode === 'grid'
+                    ? 'bg-[#FFD60A] text-black shadow-md shadow-[#FFD60A]/20'
+                    : 'text-text-muted hover:text-white'
+                }`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span>List View</span>
+              </button>
+              <button
+                onClick={() => setViewMode('map')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  viewMode === 'map'
+                    ? 'bg-[#FFD60A] text-black shadow-md shadow-[#FFD60A]/20'
+                    : 'text-text-muted hover:text-white'
+                }`}
+              >
+                <Map className="w-3.5 h-3.5" />
+                <span>Job Map</span>
+              </button>
+            </div>
+
             <button
               onClick={() => setShowMobileFilters(!showMobileFilters)}
               className="md:hidden flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#151820] border border-white/10 text-xs font-semibold text-white"
@@ -172,6 +200,13 @@ export const JobListingsPage = () => {
             </div>
           </div>
         </div>
+
+        {/* If Map View is active */}
+        {viewMode === 'map' ? (
+          <div className="mb-12">
+            <JobMapView jobs={jobs} onSelectJob={(job) => setSelectedJob(job)} />
+          </div>
+        ) : null}
 
         {/* Content Layout: Filter Sidebar + Job Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">

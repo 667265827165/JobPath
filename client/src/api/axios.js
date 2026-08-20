@@ -30,10 +30,13 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (!error.response) {
-      // Network error or backend server not reachable
-      error.customMessage = 'Unable to reach backend server. Please verify the API service is running.';
+      if (error.code === 'ECONNABORTED' || error.message?.toLowerCase().includes('timeout')) {
+        error.customMessage = 'Authentication request timed out. Please check your network and try again.';
+      } else {
+        error.customMessage = 'Unable to connect to the backend server. Please verify the API service is running.';
+      }
     } else if (error.response.status === 401) {
-      // Token invalid or expired
+      // Token invalid or expired on protected routes
       if (
         window.location.pathname.includes('/candidate') ||
         window.location.pathname.includes('/recruiter') ||
@@ -42,6 +45,12 @@ api.interceptors.response.use(
         localStorage.removeItem('hrflow_token');
         localStorage.removeItem('hrflow_user');
       }
+    } else if (error.response.status === 409) {
+      error.customMessage = error.response.data?.message || 'An account with this email already exists.';
+    } else if (error.response.status === 400) {
+      error.customMessage = error.response.data?.message || 'Invalid request. Please check the entered details.';
+    } else if (error.response.status >= 500) {
+      error.customMessage = 'Server error encountered. Please try again in a moment.';
     }
     return Promise.reject(error);
   }

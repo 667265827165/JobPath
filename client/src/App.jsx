@@ -36,7 +36,7 @@ import { NotFoundPage } from './pages/NotFoundPage';
 // AI Career Copilot
 import { CareerCopilot } from './components/ai/CareerCopilot';
 
-// Route Guard
+// Route Guards
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
 
@@ -61,6 +61,26 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   return children;
 };
 
+const PublicOnlyRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#08090D] flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-[#FFD60A] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (user) {
+    if (user.role === 'recruiter') return <Navigate to="/recruiter/dashboard" replace />;
+    if (user.role === 'admin') return <Navigate to="/admin/dashboard" replace />;
+    return <Navigate to="/candidate/dashboard" replace />;
+  }
+
+  return children;
+};
+
 export const App = () => {
   return (
     <>
@@ -74,9 +94,30 @@ export const App = () => {
       <Route path="/insights" element={<InsightsPage />} />
 
       {/* Auth */}
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
-      <Route path="/recruiter/login" element={<LoginPage />} />
+      <Route
+        path="/login"
+        element={
+          <PublicOnlyRoute>
+            <LoginPage />
+          </PublicOnlyRoute>
+        }
+      />
+      <Route
+        path="/register"
+        element={
+          <PublicOnlyRoute>
+            <RegisterPage />
+          </PublicOnlyRoute>
+        }
+      />
+      <Route
+        path="/recruiter/login"
+        element={
+          <PublicOnlyRoute>
+            <LoginPage />
+          </PublicOnlyRoute>
+        }
+      />
 
       {/* Candidate Protected Portal */}
       <Route

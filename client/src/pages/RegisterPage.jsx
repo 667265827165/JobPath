@@ -21,7 +21,7 @@ import {
 
 export const RegisterPage = () => {
   const navigate = useNavigate();
-  const { register } = useAuth();
+  const { user, isAuthenticated, register, socialLogin } = useAuth();
   const { showToast } = useToast();
 
   const [role, setRole] = useState('candidate');
@@ -34,6 +34,15 @@ export const RegisterPage = () => {
   const [location, setLocation] = useState('Hyderabad, India');
   const [agreeTerms, setAgreeTerms] = useState(true);
   const [loading, setLoading] = useState(false);
+
+  // Redirect if already authenticated
+  React.useEffect(() => {
+    if (isAuthenticated && user) {
+      if (user.role === 'recruiter') navigate('/recruiter/dashboard', { replace: true });
+      else if (user.role === 'admin') navigate('/admin/dashboard', { replace: true });
+      else navigate('/candidate/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, user, navigate]);
 
   // Password strength computation
   const getPasswordStrength = () => {
@@ -56,8 +65,22 @@ export const RegisterPage = () => {
     e.preventDefault();
     if (loading) return;
 
-    if (!name.trim() || !email.trim() || !password.trim()) {
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim();
+
+    if (!trimmedName || !trimmedEmail || !password) {
       showToast('Please fill all mandatory fields.', 'info');
+      return;
+    }
+
+    if (trimmedName.length < 2) {
+      showToast('Please enter your full name.', 'info');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      showToast('Please enter a valid email address (e.g. name@domain.com).', 'info');
       return;
     }
 
@@ -71,34 +94,50 @@ export const RegisterPage = () => {
       return;
     }
 
-    setLoading(true);
-    const res = await register({
-      name: name.trim(),
-      email: email.trim().toLowerCase(),
-      password,
-      role,
-      headline: headline || (role === 'candidate' ? 'Full Stack Developer' : 'Talent Acquisition Specialist'),
-      companyName: role === 'recruiter' ? companyName || `${name} Ventures` : undefined,
-      location: location || 'Hyderabad, India',
-    });
-    setLoading(false);
+    try {
+      setLoading(true);
+      const res = await register({
+        name: trimmedName,
+        email: trimmedEmail.toLowerCase(),
+        password,
+        role,
+        headline: headline || (role === 'candidate' ? 'Full Stack Developer' : 'Talent Acquisition Specialist'),
+        companyName: role === 'recruiter' ? companyName || `${trimmedName} Ventures` : undefined,
+        location: location || 'Hyderabad, India',
+      });
 
-    if (res.success) {
-      showToast('Account created successfully! Welcome to HR-FLOW.', 'success');
-      if (role === 'recruiter') navigate('/recruiter/dashboard');
-      else navigate('/candidate/dashboard');
-    } else {
-      showToast(res.message || 'Registration failed. Please try again.', 'error');
+      if (res.success && res.user) {
+        showToast('Account created successfully! Welcome to HR-FLOW.', 'success');
+        if (role === 'recruiter') navigate('/recruiter/dashboard');
+        else navigate('/candidate/dashboard');
+      } else {
+        showToast(res.message || 'Registration failed. Please try again.', 'error');
+      }
+    } catch {
+      showToast('Unable to complete registration. Please try again.', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleSocialAuth = (provider) => {
-    showToast(`Connecting with ${provider}... Redirecting to OAuth callback.`, 'info');
-    // Simulated OAuth trigger / redirect
-    setTimeout(() => {
-      showToast(`${provider} authorization successful!`, 'success');
-      navigate(role === 'recruiter' ? '/recruiter/dashboard' : '/candidate/dashboard');
-    }, 1200);
+  const handleSocialAuth = async (provider) => {
+    if (loading) return;
+    try {
+      setLoading(true);
+      showToast(`Connecting with ${provider}...`, 'info');
+      const res = await socialLogin(provider, role);
+      if (res.success && res.user) {
+        showToast(`${provider} account linked successfully!`, 'success');
+        if (res.user.role === 'recruiter') navigate('/recruiter/dashboard');
+        else navigate('/candidate/dashboard');
+      } else {
+        showToast(res.message || `${provider} authorization failed.`, 'error');
+      }
+    } catch {
+      showToast(`Failed to link ${provider} account.`, 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

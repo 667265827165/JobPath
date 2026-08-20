@@ -53,22 +53,36 @@ export const getCandidateRankings = async (req, res, next) => {
 
     let targetJob;
     if (jobId) {
-      targetJob = await Job.findById(jobId);
+      targetJob = await Job.findById(jobId).populate('companyId');
     } else {
-      targetJob = await Job.findOne({ recruiterId: req.user._id, status: 'active' });
+      targetJob = await Job.findOne({ recruiterId: req.user._id, status: 'active' }).populate('companyId');
     }
 
     if (!targetJob) {
-      targetJob = await Job.findOne({ status: 'active' });
+      targetJob = await Job.findOne({ status: 'active' }).populate('companyId');
     }
 
     // Find candidates in system
-    const candidates = await CandidateProfile.find().populate('userId', 'name email avatar headline location phone').limit(20);
+    const candidates = await CandidateProfile.find()
+      .populate('userId', 'name email avatar headline location phone')
+      .populate('resumeId')
+      .limit(30);
+
+    // Check existing applications for target job
+    const existingApps = targetJob
+      ? await Application.find({ jobId: targetJob._id })
+      : [];
+    const appMap = new Map();
+    existingApps.forEach((app) => {
+      appMap.set(app.candidateId.toString(), app);
+    });
 
     const rankedCandidates = candidates
       .map((c) => {
         if (!c.userId) return null;
         const match = calculateJobMatch(c.skills, c.experienceYears, targetJob);
+        const app = appMap.get(c.userId._id.toString());
+
         return {
           id: c.userId._id,
           name: c.userId.name,
@@ -86,6 +100,9 @@ export const getCandidateRankings = async (req, res, next) => {
           missingSkills: match.missingSkills,
           compatibility: match.overallCompatibility,
           teamCompatibilityScore: match.teamCompatibilityScore,
+          applicationId: app ? app._id : null,
+          applicationStatus: app ? app.status : 'discovered',
+          appliedAt: app ? app.appliedAt : null,
         };
       })
       .filter(Boolean)

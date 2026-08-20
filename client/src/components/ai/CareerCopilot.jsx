@@ -47,73 +47,9 @@ export const CareerCopilot = () => {
     }
   }, [messages, isOpen]);
 
-  const generateAIResponse = async (userPrompt) => {
-    const prompt = userPrompt.toLowerCase();
-    const candidateSkills = user?.profile?.skills?.map((s) => s.name) || ['React', 'JavaScript', 'Node.js', 'MongoDB'];
-    const skillsListStr = candidateSkills.join(', ');
-
-    // Realistic contextual AI logic powered by verified candidate stack
-    if (prompt.includes('job') && (prompt.includes('suit') || prompt.includes('which') || prompt.includes('recommend'))) {
-      return `Based on your verified skills in **${skillsListStr}**, you are an exceptional match for:
-• **Senior Frontend Developer (React & TypeScript)** at *TechNova Labs* (94% Match)
-• **Full Stack Engineer (Payments)** at *Razorpay Infra* (88% Match)
-• **React Specialist** at *CRED Core* (91% Match)
-
-Would you like to review application requirements or practice interview questions for these roles?`;
-    }
-
-    if (prompt.includes('missing') || prompt.includes('skill') || prompt.includes('gap')) {
-      return `### 🔍 Skill Gap & Market Diagnostics:
-Your core foundation in **${skillsListStr}** is strong. However, top Indian unicorns currently prioritize:
-
-1. **System Design & Distributed Caching (Redis/Kafka)** — +24% salary premium
-2. **AWS Cloud Architecture & EKS Orchestration** — Unlocks Staff Engineer bands
-3. **TypeScript Strict Typing** — Recommended for 90%+ modern codebases
-
-Investing 3–4 weeks in distributed system patterns will significantly boost recruiter shortlist conversions.`;
-    }
-
-    if (prompt.includes('resume') || prompt.includes('improve')) {
-      return `### 📄 3 High-Impact Resume Upgrades:
-1. **Quantify Engineering Impact:** Instead of *"Built React frontend"*, write *"Architected React 18 component design system, reducing initial bundle size by 38% and optimizing LCP to 1.1s"*.
-2. **Highlight Cloud & Production Deployments:** Link live GitHub repositories with automated CI/CD workflows (Docker / GitHub Actions).
-3. **Tailor Keywords:** Ensure your headline explicitly lists your primary stack (e.g. *Senior Full Stack Engineer | React, Node.js, PostgreSQL*).`;
-    }
-
-    if (prompt.includes('interview') || prompt.includes('react') || prompt.includes('prepare')) {
-      return `### 🎯 React Technical Interview Prep:
-Key topics hiring managers test for your seniority level:
-• **Concurrent Rendering & Transitions:** When to use \`useTransition\` vs \`useDeferredValue\`.
-• **Custom Hook Architecture:** Writing resilient \`AbortController\` cancellation hooks.
-• **State Management Tradeoffs:** Zustand vs Redux Toolkit vs React Query for server cache.
-
-You can also test these in our **Live AI Technical Assessment** under your Interviews portal!`;
-    }
-
-    if (prompt.includes('roadmap') || prompt.includes('month') || prompt.includes('learning')) {
-      return `### 🗺️ 3-Month Accelerated Career Roadmap:
-
-**Month 1: Modern Cloud & Containers**
-• Docker containerization & multi-stage builds.
-• Deploying Node.js microservices to AWS ECS / EKS.
-
-**Month 2: High-Scale System Design**
-• Event-driven architecture with Apache Kafka.
-• Multi-tier caching with Redis & database read replicas.
-
-**Month 3: Production Portfolio & Assessment**
-• Build and open-source a full-stack real-time platform.
-• Complete the HR-FLOW AI Technical Assessment to earn recruiter verification badges.`;
-    }
-
-    return `I analyzed your query regarding **"${userPrompt}"** alongside your profile context (${skillsListStr}). 
-
-To maximize your hiring rate on HR-FLOW, maintain an updated resume screening score, practice role-tailored technical assessments, and apply early to high-compatibility vacancies. Is there a specific role or company you'd like guidance on?`;
-  };
-
   const handleSendMessage = async (textToSend) => {
     const text = textToSend || inputText;
-    if (!text.trim()) return;
+    if (!text.trim() || isTyping) return;
 
     const userMessage = {
       sender: 'user',
@@ -125,19 +61,37 @@ To maximize your hiring rate on HR-FLOW, maintain an updated resume screening sc
     setInputText('');
     setIsTyping(true);
 
-    // Simulate AI inference delay
-    setTimeout(async () => {
-      const reply = await generateAIResponse(text);
+    try {
+      const res = await api.post('/copilot/chat', {
+        message: text.trim(),
+        conversationHistory: messages.slice(-6),
+      });
+
+      const reply = res.data?.data?.reply || 'I received your query. How can I assist further?';
+
       setMessages((prev) => [
         ...prev,
         {
           sender: 'bot',
           text: reply,
+          source: res.data?.data?.source || 'Gemini',
           timestamp: new Date(),
         },
       ]);
+    } catch (err) {
+      console.error('Co-Pilot communication error:', err);
+      // Fallback message
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'bot',
+          text: `I analyzed your query regarding **"${text.trim()}"**. You can view matching jobs, complete resume scoring, or review curated learning roadmaps in your candidate dashboard!`,
+          timestamp: new Date(),
+        },
+      ]);
+    } finally {
       setIsTyping(false);
-    }, 700);
+    }
   };
 
   return (

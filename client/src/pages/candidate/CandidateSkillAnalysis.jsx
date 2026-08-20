@@ -55,6 +55,27 @@ export const CandidateSkillAnalysis = () => {
     { subject: 'DevOps & Docker', A: 42, fullMark: 100 },
   ];
 
+  const [selectedLanguage, setSelectedLanguage] = useState('English');
+  const [learningVideos, setLearningVideos] = useState([]);
+  const [loadingVideos, setLoadingVideos] = useState(false);
+
+  useEffect(() => {
+    const fetchVideos = async () => {
+      setLoadingVideos(true);
+      try {
+        const res = await api.get(`/learning/youtube?topic=React&language=${selectedLanguage}&limit=4`);
+        if (res.data?.success) {
+          setLearningVideos(res.data.data.resources || []);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoadingVideos(false);
+      }
+    };
+    fetchVideos();
+  }, [selectedLanguage]);
+
   return (
     <DashboardLayout
       title="Skill Gap Radar & Competency Diagnostics"
@@ -154,6 +175,79 @@ export const CandidateSkillAnalysis = () => {
                 ))}
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Multi-Lingual YouTube Curated Learning Resources */}
+        <div className="glass-card p-6 sm:p-8 border-white/10 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-[#FFD60A] flex items-center gap-1.5">
+                <BookOpen className="w-4 h-4" /> YouTube Learning Accelerator
+              </span>
+              <h3 className="text-lg font-extrabold text-white mt-1">
+                Curated Roadmaps & Playlists For Your Skill Gaps
+              </h3>
+              <p className="text-xs text-text-muted">
+                Learn in your preferred language to master missing topics faster.
+              </p>
+            </div>
+
+            {/* Language Selector Tabs */}
+            <div className="flex items-center bg-[#151820] border border-white/10 p-1 rounded-2xl">
+              {['English', 'Telugu', 'Tamil', 'Hindi'].map((lang) => (
+                <button
+                  key={lang}
+                  onClick={() => setSelectedLanguage(lang)}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    selectedLanguage === lang
+                      ? 'bg-[#FFD60A] text-black shadow-md shadow-[#FFD60A]/20'
+                      : 'text-text-muted hover:text-white'
+                  }`}
+                >
+                  {lang}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Videos Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {learningVideos.map((video, idx) => (
+              <a
+                key={idx}
+                href={video.videoUrl || video.playlistUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#FFD60A]/40 transition-all flex flex-col justify-between"
+              >
+                <div>
+                  <div className="relative aspect-video rounded-xl overflow-hidden mb-3 bg-black/40">
+                    <img
+                      src={video.thumbnail}
+                      alt={video.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <span className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/80 text-[10px] font-mono text-white">
+                      {video.duration || 'Full Course'}
+                    </span>
+                  </div>
+
+                  <span className="text-[10px] px-2 py-0.5 rounded-md bg-[#FFD60A]/15 text-[#FFD60A] font-bold border border-[#FFD60A]/30">
+                    {video.badge || 'Recommended'}
+                  </span>
+                  <h4 className="text-xs font-bold text-white mt-2 line-clamp-2 group-hover:text-[#FFD60A] transition-colors">
+                    {video.title}
+                  </h4>
+                  <p className="text-[11px] text-text-muted mt-1">{video.channel}</p>
+                </div>
+
+                <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between text-[11px] text-[#FFD60A] font-bold">
+                  <span>Start Course</span>
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </a>
+            ))}
           </div>
         </div>
       </div>

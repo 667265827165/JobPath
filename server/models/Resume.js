@@ -62,7 +62,19 @@ const ResumeSchema = new mongoose.Schema(
         },
       ],
       certifications: [String],
-      recommendedRoles: [String],
+      recommendedRoles: [
+        {
+          role: String,
+          matchPercentage: Number,
+        },
+      ],
+      strongAreas: [String],
+      skillGaps: [String],
+      recommendedImprovements: [String],
+      scoreBreakdown: {
+        type: mongoose.Schema.Types.Mixed,
+        default: {},
+      },
       overallResumeScore: {
         type: Number,
         default: 85,

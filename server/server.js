@@ -19,6 +19,9 @@ import interviewRoutes from './routes/interviewRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import copilotRoutes from './routes/copilotRoutes.js';
+import mapsRoutes from './routes/mapsRoutes.js';
+import learningRoutes from './routes/learningRoutes.js';
 
 dotenv.config();
 
@@ -36,7 +39,10 @@ app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 const allowedOrigins = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5174',
   'http://localhost:3000',
+  'http://127.0.0.1:3000',
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
@@ -47,12 +53,13 @@ app.use(
       if (!origin) return callback(null, true);
       if (
         allowedOrigins.includes(origin) ||
+        /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ||
         origin.endsWith('.vercel.app') ||
         origin.endsWith('.onrender.com')
       ) {
         return callback(null, true);
       }
-      return callback(null, true); // Permissive in dev, valid origin returned
+      return callback(null, true); // Dev-friendly fallback
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -83,7 +90,7 @@ app.get('/api/health', (req, res) => {
     success: true,
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    service: 'HR-FLOW AI Recruitment Platform API',
+    service: 'HIREX AI Recruitment Platform API',
   });
 });
 
@@ -98,6 +105,11 @@ app.use('/api/interviews', interviewRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/copilot', copilotRoutes);
+app.use('/api/ai/copilot', copilotRoutes);
+app.use('/api/maps', mapsRoutes);
+app.use('/api/learning', learningRoutes);
+app.use('/api/career', learningRoutes);
 
 // Global Error Handlers
 app.use(notFound);
